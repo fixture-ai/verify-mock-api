@@ -1,0 +1,28 @@
+{
+  "// Mock Verify API config": "Provide your own config.json to customize behavior.",
+  "// Note": "All lines starting with // are comments and have no effect.",
+
+  "apiKeys": ["test"],
+
+  "storage": {
+    "// Storage cleanup interval": "How long to keep sessions in memory before auto removal",
+    "cleanupIntervalMinutes": 10
+  },
+
+  "otp": {
+    "// Global OTP success codes": "Codes that pass verification unless overidden in a specific scenario",
+    "successCodes": ["1234"]
+  },
+
+  "processing": {
+    "// Global processing delay": "Delay used unless overidden in a specific scenario",
+    "delaySeconds": 1
+  },
+
+  "// Test scenarios": "Cases that override global defaults to test specific things",
+  "scenarios": [
+    { "email": "a@example.com", "otp": 9999, "score": 11, "processingDelaySeconds": 10 },
+    { "email": "b@example.com", "otp": null, "score": 22, "processingDelaySeconds": 0 },
+    { "email": "c@example.com", "otp": null, "score": null }
+  ]
+}

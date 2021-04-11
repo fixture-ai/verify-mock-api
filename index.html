@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Mock Verify API</title>
+  <style type="text/css">
+    body { margin: 0; padding: 10px 50px; font-family: monospace; line-height: 1.7; }
+    h1, h2 { margin: 30px 0; line-height: 1.2;}
+    h1 strong, h2 strong { diplay: block; font-size: 140%; }
+    pre { background: #f7f7f7; padding: 5px; }
+    pre .comment { display: inline-block; color: darkgreen; }
+  </style>
+</head>
+<body>
+<div>
+  <h1>
+    <strong>Mock Verify API</strong><br>
+    like the real thing, but for testing
+  </h1>
+  <p>
+    This is a mock version of the Verify API you can use for testing.<br>
+    No data will be submitted anywhere, and no emails will be sent.
+  </p>
+  <p>
+    See the <a href="">Verify API docs</a> for details on how to use the API.<br>
+    This mock API works just like the real API, but at a different root URL.
+  </p>
+
+  <h2>
+    <strong>Config and test scenarios</strong><br>
+    loaded from config.json
+  </h2>
+  <p><pre id="config">Loading...</pre></p>
+</div>
+<script id="configJson" type="application/json" src="/config.json"></script>
+<script>
+  (function() {
+    fetch('/config.json')
+      .then(res => res.json())
+      .then(config => document.getElementById('config').innerHTML = render(config))
+      .catch(_ => console.error("Could not load config.json. Check that config.json is valid."));
+
+    function render(obj) {
+      let json = JSON.stringify(obj, null, 2);
+      return json.replace(/("\/\/[^"]+": "[^"]*",)/g, '<span class="comment">$1</span>');
+    }
+  })();
+</script>
+</body>
+</html>
