@@ -34,6 +34,7 @@ const app = express();
 const port = 8989;
 app.use(cors());
 app.use(express.json());
+app.use(log);
 
 ///////////////////
 // Configure express routes -->
@@ -150,6 +151,12 @@ function auth(req, res, next) {
   }
 
   res.status(403).json({ message: 'Forbidden' });
+}
+
+function log(req, res, next) {
+  console.log(`Request: ${req.method} ${req.originalUrl}`);
+  res.on('finish', () => console.log(`Response: ${res.statusCode}`));
+  next();
 }
 
 function isValidEmail(email) {
