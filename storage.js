@@ -1,8 +1,11 @@
 class Storage {
-  sessions = {};
+  sessions;
+  seedSessions;
   cleanupIntervalMinutes;
 
   constructor(config) {
+    this.sessions = {};
+    this.seedSessions = {};
     this.cleanupIntervalMinutes = Math.max(1, (config || {}).cleanupIntervalMinutes || 30);
 
     setInterval(
@@ -21,14 +24,26 @@ class Storage {
     }
   }
 
+  seed(sessions) {
+    for (let session of sessions || []) {
+      this.seedSessions[session.id] = session;
+      this.sessions[session.id] = { ...session }; // copy to mutate
+    }
+  }
+
   cleanup() {
     const now = new Date();
     const minDate = now.setMinutes(now.getMinutes() - this.cleanupIntervalMinutes);
     let deleteCount = 0;
 
     for (let id in this.sessions) {
-      if (!this.sessions[id].created || this.sessions[id].created < minDate) {
-        delete this.sessions[id];
+      if (!this.sessions[id].updated || this.sessions[id].updated < minDate) {
+        if (this.seedSessions[id]) {
+          this.sessions[id] = { ...this.seedSessions[id], created: new Date(), updated: new Date() }
+        } else {
+          delete this.sessions[id];
+        }
+
         deleteCount++;
       }
     }

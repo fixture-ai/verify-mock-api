@@ -15,9 +15,11 @@ const STATUSES = {
   completed: 'completed',
   failed: 'failed',
 };
+const MAX_OTP_ATTEMPTS = 3;
 
 const apiKeys = new Set(config.apiKeys || []);
 const storage = new Storage(config.storage);
+storage.seed((config.newSessionIds || []).map(createSession));
 const otpSuccessCodes = new Set((config.otp || {}).successCodes.map(x => x.toString()) || []);
 const defaultProcessingDelaySeconds = Math.max(0, (config.processing || {}).delaySeconds || 0);
 const scenarios = (config.scenarios || []).reduce((result, item) => {
@@ -53,13 +55,7 @@ app.get('/favicon.ico', (req, res) => {
 
 app.post('/session', auth, (req, res) => {
   const id = uuid();
-  const session = {
-    id,
-    status: STATUSES.pending,
-    score: null,
-    otpVerified: false,
-    created: new Date()
-  };
+  const session = createSession(id);
 
   storage.save(session);
 
@@ -87,7 +83,10 @@ app.put('/session/:id', async (req, res) => {
     }
   }
 
-  isChanged && storage.save(session);
+  if (isChanged) {
+    session.updated = new Date();
+    storage.save(session);
+  }
 
   res.status(204).send();
 });
@@ -105,23 +104,35 @@ app.patch('/session/:id/verify', async (req, res) => {
 
   const scenario = scenarios[session.email] || {};
 
+  session.otpAttempts = (session.otpAttempts || 0) + 1;
+  if ((session.status != STATUSES.pending && session.status != STATUSES.failed) || session.otpAttempts > MAX_OTP_ATTEMPTS) {
+    res.json(withDebugInfo({ success: false, canRetry: false }, { session }));
+    return;
+  }
+
   session.otpVerified = scenario.otp ? scenario.otp === otp : otpSuccessCodes.has(otp);
   session.status = session.otpVerified ? STATUSES.processing : STATUSES.failed;
+  session.updated = new Date();
+  session.score = 0;
   storage.save(session);
 
-  // Simulate processing by setting score and completed status some time later.
-  if (session.status === STATUSES.processing) {
+  if (session.otpVerified) {
+    // Simulate processing by setting score and completed status some time later.
     const delaySeconds = scenario.processingDelaySeconds != null
       ? scenario.processingDelaySeconds
       : defaultProcessingDelaySeconds;
     setTimeout(() => {
       session.status = STATUSES.completed;
       session.score = scenario.score || 0;
+      session.updated = new Date();
       storage.save(session);
     }, Math.max(0, delaySeconds) * 1000);
+
+    res.json(withDebugInfo({ success: true, canRetry: false }, { session }));
+    return;
   }
 
-  res.status(204).send();
+  res.json(withDebugInfo({ success: false, canRetry: session.otpAttempts < MAX_OTP_ATTEMPTS }, { session }));
 });
 
 app.get('/session/:id', auth, (req, res) => {
@@ -139,10 +150,21 @@ app.get('/session/:id', auth, (req, res) => {
 
 ///////////////////
 // Start up server -->
-app.listen(port, () => console.debug(`Mock API is ready at: http://localhost:${port}`));
+app.listen(port, () => console.debug(`Mock Verify API is ready at: http://localhost:${port}`));
 
 //////////////////
 // Helpers
+
+function createSession(id) {
+  return {
+    id,
+    status: STATUSES.pending,
+    score: null,
+    otpVerified: false,
+    created: new Date(),
+    updated: new Date()
+  };
+}
 
 function auth(req, res, next) {
   if (apiKeys.has(req.header(API_KEY_HEADER))) {
