@@ -18,6 +18,7 @@ const STATUSES = {
 const MAX_OTP_ATTEMPTS = 3;
 
 const apiKeys = new Set(config.apiKeys || []);
+const newSessionIds = new Set(config.newSessionIds || []);
 const storage = new Storage(config.storage);
 storage.seed((config.newSessionIds || []).map(createSession));
 const otpSuccessCodes = new Set((config.otp || {}).successCodes.map(x => x.toString()) || []);
@@ -81,6 +82,16 @@ app.put('/session/:id', async (req, res) => {
       session[prop] = newProps[prop];
       isChanged = true;
     }
+  }
+
+  // Always reset pre-populated session ids to allow re-use.
+  // This is a minor difference from the real API but makes testing easier.
+  if (newSessionIds.has(session.id)) {
+    isChanged = true;
+    session.status = STATUSES.pending;
+    session.score = 0;
+    session.otpVerified = false;
+    session.otpAttempts = 0;
   }
 
   if (isChanged) {
